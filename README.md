@@ -1,6 +1,6 @@
 # redash-cli
 
-A portable command-line interface for Redash written in Go.
+A portable command-line interface for Redash written in Go.  
 Inspired by https://github.com/suthio/redash-mcp
 
 ## Features
