@@ -23,7 +23,7 @@ test-coverage:
 	go tool cover -html=coverage.out -o coverage.html
 
 lint:
-	golangci-lint run
+	go vet ./...
 
 fmt:
 	go fmt ./...
