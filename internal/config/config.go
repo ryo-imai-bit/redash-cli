@@ -68,7 +68,20 @@ func Load(configFile, profile string) (*Config, error) {
 		ExtraHeaders: make(map[string]string),
 	}
 
-	// If profile is specified, load from profiles section
+	// Load top-level config values first
+	cfg.URL = v.GetString("url")
+	cfg.APIKey = v.GetString("api_key")
+	cfg.Timeout = time.Duration(v.GetInt("timeout")) * time.Millisecond
+	cfg.MaxResults = v.GetInt("max_results")
+	cfg.SocksProxy = v.GetString("socks_proxy")
+
+	// Load extra headers from top-level config
+	headers := v.GetStringMapString("extra_headers")
+	for k, val := range headers {
+		cfg.ExtraHeaders[k] = val
+	}
+
+	// If profile is specified, override with profile settings
 	if profile == "" {
 		profile = v.GetString("default_profile")
 		if profile == "" {
@@ -79,16 +92,26 @@ func Load(configFile, profile string) (*Config, error) {
 	if profile != "" {
 		sub := v.Sub("profiles." + profile)
 		if sub != nil {
-			cfg.URL = sub.GetString("url")
-			cfg.APIKey = sub.GetString("api_key")
-			cfg.Timeout = time.Duration(sub.GetInt("timeout")) * time.Millisecond
-			cfg.MaxResults = sub.GetInt("max_results")
-			cfg.SocksProxy = sub.GetString("socks_proxy")
+			if u := sub.GetString("url"); u != "" {
+				cfg.URL = u
+			}
+			if k := sub.GetString("api_key"); k != "" {
+				cfg.APIKey = k
+			}
+			if t := sub.GetInt("timeout"); t > 0 {
+				cfg.Timeout = time.Duration(t) * time.Millisecond
+			}
+			if m := sub.GetInt("max_results"); m > 0 {
+				cfg.MaxResults = m
+			}
+			if s := sub.GetString("socks_proxy"); s != "" {
+				cfg.SocksProxy = s
+			}
 
-			// Load extra headers from profile
-			headers := sub.GetStringMapString("extra_headers")
-			for k, v := range headers {
-				cfg.ExtraHeaders[k] = v
+			// Load extra headers from profile (merge with top-level)
+			profileHeaders := sub.GetStringMapString("extra_headers")
+			for k, val := range profileHeaders {
+				cfg.ExtraHeaders[k] = val
 			}
 		}
 	}
@@ -118,16 +141,6 @@ func Load(configFile, profile string) (*Config, error) {
 	if headers := os.Getenv("REDASH_EXTRA_HEADERS"); headers != "" {
 		if err := parseExtraHeaders(headers, cfg.ExtraHeaders); err != nil {
 			return nil, fmt.Errorf("failed to parse REDASH_EXTRA_HEADERS: %w", err)
-		}
-	}
-
-	// Parse REDASH_COOKIE_* environment variables
-	cookies := parseCookieEnvVars()
-	if cookies != "" {
-		if existing, ok := cfg.ExtraHeaders["Cookie"]; ok && existing != "" {
-			cfg.ExtraHeaders["Cookie"] = existing + "; " + cookies
-		} else {
-			cfg.ExtraHeaders["Cookie"] = cookies
 		}
 	}
 
@@ -178,36 +191,3 @@ func parseExtraHeaders(s string, headers map[string]string) error {
 	return nil
 }
 
-// parseCookieEnvVars parses REDASH_COOKIE_* environment variables into a cookie string
-// Example: REDASH_COOKIE_SESSION=abc -> session=abc
-// Example: REDASH_COOKIE__OAUTH2_PROXY=xyz -> _oauth2_proxy=xyz (double underscore for leading underscore)
-func parseCookieEnvVars() string {
-	const prefix = "REDASH_COOKIE_"
-	var cookies []string
-
-	for _, env := range os.Environ() {
-		if !strings.HasPrefix(env, prefix) {
-			continue
-		}
-
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) != 2 || parts[1] == "" {
-			continue
-		}
-
-		// Extract cookie name from env var name
-		// REDASH_COOKIE_SESSION -> session
-		// REDASH_COOKIE__OAUTH2_PROXY -> _oauth2_proxy (leading double underscore becomes single)
-		cookieName := strings.TrimPrefix(parts[0], prefix)
-		cookieName = strings.ToLower(cookieName)
-
-		// Handle leading underscore: __NAME -> _name
-		if strings.HasPrefix(cookieName, "_") {
-			cookieName = "_" + strings.TrimPrefix(cookieName, "_")
-		}
-
-		cookies = append(cookies, cookieName+"="+parts[1])
-	}
-
-	return strings.Join(cookies, "; ")
-}
