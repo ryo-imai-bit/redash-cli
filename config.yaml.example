@@ -1,0 +1,38 @@
+# Redash CLI Configuration
+# Copy this file to config.yaml and fill in your values
+# Place in: ./config.yaml, ~/.config/redash-cli/config.yaml, or ~/.redash-cli/config.yaml
+
+# Required: Redash instance URL
+url: https://redash.example.com
+
+# Required: Your Redash API key (found in User Settings)
+api_key: your_api_key_here
+
+# Optional: Request timeout in milliseconds (default: 30000)
+# timeout: 30000
+
+# Optional: Maximum number of results to fetch (default: 1000)
+# max_results: 1000
+
+# Optional: SOCKS proxy URL
+# socks_proxy: socks5://localhost:1080
+
+# Optional: Extra headers
+# Use >- for multi-line values (newlines become spaces)
+# extra_headers:
+#   Authorization: Bearer your_token
+#   Cookie: >-
+#     cookie1=value1;
+#     cookie2=value2;
+#     cookie3=value3
+
+# Optional: Multiple profiles for different environments
+# profiles:
+#   prod:
+#     url: https://redash.example.com
+#     api_key: prod_api_key
+#   staging:
+#     url: https://redash-staging.example.com
+#     api_key: staging_api_key
+#
+# default_profile: prod
