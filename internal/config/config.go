@@ -121,6 +121,16 @@ func Load(configFile, profile string) (*Config, error) {
 		}
 	}
 
+	// Parse REDASH_COOKIE_* environment variables
+	cookies := parseCookieEnvVars()
+	if cookies != "" {
+		if existing, ok := cfg.ExtraHeaders["Cookie"]; ok && existing != "" {
+			cfg.ExtraHeaders["Cookie"] = existing + "; " + cookies
+		} else {
+			cfg.ExtraHeaders["Cookie"] = cookies
+		}
+	}
+
 	// Set defaults if not set
 	if cfg.Timeout == 0 {
 		cfg.Timeout = 30 * time.Second
@@ -166,4 +176,38 @@ func parseExtraHeaders(s string, headers map[string]string) error {
 		headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 	return nil
+}
+
+// parseCookieEnvVars parses REDASH_COOKIE_* environment variables into a cookie string
+// Example: REDASH_COOKIE_SESSION=abc -> session=abc
+// Example: REDASH_COOKIE__OAUTH2_PROXY=xyz -> _oauth2_proxy=xyz (double underscore for leading underscore)
+func parseCookieEnvVars() string {
+	const prefix = "REDASH_COOKIE_"
+	var cookies []string
+
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, prefix) {
+			continue
+		}
+
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 || parts[1] == "" {
+			continue
+		}
+
+		// Extract cookie name from env var name
+		// REDASH_COOKIE_SESSION -> session
+		// REDASH_COOKIE__OAUTH2_PROXY -> _oauth2_proxy (leading double underscore becomes single)
+		cookieName := strings.TrimPrefix(parts[0], prefix)
+		cookieName = strings.ToLower(cookieName)
+
+		// Handle leading underscore: __NAME -> _name
+		if strings.HasPrefix(cookieName, "_") {
+			cookieName = "_" + strings.TrimPrefix(cookieName, "_")
+		}
+
+		cookies = append(cookies, cookieName+"="+parts[1])
+	}
+
+	return strings.Join(cookies, "; ")
 }
