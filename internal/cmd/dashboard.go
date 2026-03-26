@@ -56,16 +56,21 @@ func newDashboardListCmd() *cobra.Command {
 
 func newDashboardGetCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <id>",
-		Short: "Get a dashboard by ID",
+		Use:   "get <id-or-slug>",
+		Short: "Get a dashboard by ID or slug",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid dashboard ID: %s", args[0])
+			var dashboard *client.Dashboard
+			var err error
+
+			// Try to parse as ID first
+			if id, parseErr := strconv.Atoi(args[0]); parseErr == nil {
+				dashboard, err = GetClient().GetDashboard(GetContext(), id)
+			} else {
+				// Treat as slug
+				dashboard, err = GetClient().GetDashboardBySlug(GetContext(), args[0])
 			}
 
-			dashboard, err := GetClient().GetDashboard(GetContext(), id)
 			if err != nil {
 				return err
 			}

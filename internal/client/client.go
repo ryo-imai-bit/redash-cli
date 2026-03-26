@@ -379,11 +379,20 @@ func (c *Client) ListDashboards(ctx context.Context, page, pageSize int) (*Pagin
 	return &result, nil
 }
 
-// GetDashboard returns a specific dashboard
+// GetDashboard returns a specific dashboard by ID
 func (c *Client) GetDashboard(ctx context.Context, id int) (*Dashboard, error) {
 	var dashboard Dashboard
 	if err := c.do(ctx, "GET", fmt.Sprintf("/api/dashboards/%d", id), nil, &dashboard); err != nil {
 		return nil, fmt.Errorf("failed to get dashboard: %w", err)
+	}
+	return &dashboard, nil
+}
+
+// GetDashboardBySlug returns a specific dashboard by slug
+func (c *Client) GetDashboardBySlug(ctx context.Context, slug string) (*Dashboard, error) {
+	var dashboard Dashboard
+	if err := c.do(ctx, "GET", fmt.Sprintf("/api/dashboards/%s?legacy=null", slug), nil, &dashboard); err != nil {
+		return nil, fmt.Errorf("failed to get dashboard by slug: %w", err)
 	}
 	return &dashboard, nil
 }
