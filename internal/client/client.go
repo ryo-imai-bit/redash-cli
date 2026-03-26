@@ -456,9 +456,17 @@ func (c *Client) ForkDashboardLegacy(ctx context.Context, original *Dashboard, n
 			options = make(map[string]any)
 		}
 
+		// Get visualization ID from either field
+		var vizID *int
+		if widget.VisualizationID != nil {
+			vizID = widget.VisualizationID
+		} else if widget.Visualization != nil && widget.Visualization.ID != 0 {
+			vizID = &widget.Visualization.ID
+		}
+
 		widgetReq := &CreateWidgetRequest{
 			DashboardID:     newDashboard.ID,
-			VisualizationID: widget.VisualizationID,
+			VisualizationID: vizID,
 			Text:            widget.Text,
 			Width:           widget.Width,
 			Options:         options,
