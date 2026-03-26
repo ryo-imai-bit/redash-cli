@@ -423,13 +423,54 @@ func (c *Client) ArchiveDashboard(ctx context.Context, id int) error {
 	return nil
 }
 
-// ForkDashboard forks a dashboard
+// ForkDashboard forks a dashboard using the native fork API
 func (c *Client) ForkDashboard(ctx context.Context, id int) (*Dashboard, error) {
 	var dashboard Dashboard
 	if err := c.do(ctx, "POST", fmt.Sprintf("/api/dashboards/%d/fork", id), nil, &dashboard); err != nil {
 		return nil, fmt.Errorf("failed to fork dashboard: %w", err)
 	}
 	return &dashboard, nil
+}
+
+// ForkDashboardLegacy forks a dashboard by creating a new dashboard and copying widgets
+// This works with older Redash versions that don't support the fork API
+func (c *Client) ForkDashboardLegacy(ctx context.Context, original *Dashboard, newName string) (*Dashboard, error) {
+	// Use provided name or generate one
+	if newName == "" {
+		newName = original.Name + " (Copy)"
+	}
+
+	// Create new dashboard
+	newDashboard, err := c.CreateDashboard(ctx, &CreateDashboardRequest{
+		Name: newName,
+		Tags: original.Tags,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new dashboard: %w", err)
+	}
+
+	// Copy each widget
+	for _, widget := range original.Widgets {
+		options := widget.Options
+		if options == nil {
+			options = make(map[string]any)
+		}
+
+		widgetReq := &CreateWidgetRequest{
+			DashboardID:     newDashboard.ID,
+			VisualizationID: widget.VisualizationID,
+			Text:            widget.Text,
+			Width:           widget.Width,
+			Options:         options,
+		}
+
+		if _, err := c.CreateWidget(ctx, widgetReq); err != nil {
+			return nil, fmt.Errorf("failed to copy widget %d: %w", widget.ID, err)
+		}
+	}
+
+	// Fetch and return the complete new dashboard by slug
+	return c.GetDashboardBySlug(ctx, newDashboard.Slug)
 }
 
 // ShareDashboard creates a public link for a dashboard

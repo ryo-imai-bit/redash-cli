@@ -163,10 +163,10 @@ type Widget struct {
 // CreateWidgetRequest represents a request to create a widget
 type CreateWidgetRequest struct {
 	DashboardID     int            `json:"dashboard_id"`
-	VisualizationID *int           `json:"visualization_id,omitempty"`
+	VisualizationID *int           `json:"visualization_id"`
 	Text            string         `json:"text,omitempty"`
 	Width           int            `json:"width"`
-	Options         map[string]any `json:"options,omitempty"`
+	Options         map[string]any `json:"options"`
 }
 
 // UpdateWidgetRequest represents a request to update a widget

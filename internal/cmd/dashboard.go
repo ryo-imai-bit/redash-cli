@@ -170,23 +170,49 @@ func newDashboardArchiveCmd() *cobra.Command {
 }
 
 func newDashboardForkCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "fork <id>",
+	var legacy bool
+	var name string
+
+	cmd := &cobra.Command{
+		Use:   "fork <id-or-slug>",
 		Short: "Fork a dashboard",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid dashboard ID: %s", args[0])
+			var dashboard *client.Dashboard
+			var err error
+
+			// Parse ID or slug
+			id, parseErr := strconv.Atoi(args[0])
+			isSlug := parseErr != nil
+
+			if legacy || isSlug || name != "" {
+				// Legacy mode: create dashboard + copy widgets
+				var original *client.Dashboard
+				if isSlug {
+					original, err = GetClient().GetDashboardBySlug(GetContext(), args[0])
+				} else {
+					original, err = GetClient().GetDashboard(GetContext(), id)
+				}
+				if err != nil {
+					return err
+				}
+				dashboard, err = GetClient().ForkDashboardLegacy(GetContext(), original, name)
+			} else {
+				// Use native fork API
+				dashboard, err = GetClient().ForkDashboard(GetContext(), id)
 			}
 
-			dashboard, err := GetClient().ForkDashboard(GetContext(), id)
 			if err != nil {
 				return err
 			}
 			return PrintResult(dashboard)
 		},
 	}
+
+	cmd.Flags().BoolVar(&legacy, "legacy", false, "use legacy fork method (for older Redash versions)")
+	cmd.Flags().StringVar(&name, "name", "", "name for the new dashboard (implies --legacy)")
+
+	return cmd
 }
 
 func newDashboardShareCmd() *cobra.Command {
